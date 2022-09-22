@@ -35,7 +35,3 @@ class Convert:
                            'pk': f['id'],
                            'fields': f})
         return fields
-
-
-Convert.str_to_boolean_checker = True
-Convert.csv_to_json('csv_vault/categories.csv', 'cat.categories')
