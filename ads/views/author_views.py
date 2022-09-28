@@ -6,12 +6,16 @@ from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.db.models.fields.related_descriptors import ForwardManyToOneDescriptor
 
+from rest_framework import generics
+
 
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, CreateView, DeleteView, UpdateView
+from django.db import connection
 
+from ads import serializers
 from ads.geo_helper import GeoFinder
 from ads.models.loc_and_user import Author, Location
 from hw27.settings import TOTAL_ON_PAGE
@@ -37,7 +41,7 @@ class AuthorView(View):
                 "password": ad.password,
                 "role": ad.role,
                 "age": ad.age,
-                "location_id": ad.location_id_id,
+                "location": ad.location.name,
                 "total_ads": ad.total_ads
             })
 
@@ -48,47 +52,56 @@ class AuthorView(View):
                             safe=False)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class AuthorCreateView(CreateView):
+# @method_decorator(csrf_exempt, name='dispatch')
+# class AuthorCreateView(CreateView):
+#
+#     model = Author
+#
+#     fields = ["first_name", "last_name", "username", "password", "role", "age", "location_id"]
+#
+#     def post(self, request, *args, **kwargs):
+#
+#         ad_data = json.loads(request.body)
+#
+#         location = f'{ad_data["location"][0]}, {ad_data["location"][1]}'
+#
+#         right_location = Location.objects.all().filter(name=location)
+#         # TODO НАПИШИТЕ, ПОЖАЛУЙСТА, КУДА ЛУЧШЕ СКЛАДЫВАТЬ ВСЮ ЭТУ ЛОГИКУ
+#
+#         if right_location.first() is not None:
+#             location_id_id = right_location.first().id
+#         else:
+#             lat, lng = GeoFinder(location).get_lat_lng()
+#             created_location = Location.objects.create(name=location, lat=lat, lng=lng)
+#             location_id_id = created_location.id
+#
+#         ad = Author.objects.create(
+#                 first_name=ad_data["first_name"],
+#                 last_name=ad_data["last_name"],
+#                 username=ad_data["username"],
+#                 password=ad_data["password"],
+#                 role=ad_data["role"],
+#                 age=ad_data["age"],
+#                 location_id_id=location_id_id)
+#
+#         try:
+#             ad.full_clean()
+#         except ValidationError as e:
+#             return JsonResponse(e.message_dict, status=422)
+#
+#         return JsonResponse({
+#             "id": ad.id,
+#             "name": ad.username,
+#         })
 
-    model = Author
 
-    fields = ["first_name", "last_name", "username", "password", "role", "age", "location_id"]
+class AuthorAPICreate(generics.CreateAPIView):
+    queryset = Author.objects.all()
+    serializer_class = serializers.AlbumSerializer  # TODO вернуть geohelper
 
-    def post(self, request, *args, **kwargs):
-
-        ad_data = json.loads(request.body)
-
-        location = f'{ad_data["location"][0]}, {ad_data["location"][1]}'
-
-        right_location = Location.objects.all().filter(name=location)
-        # TODO НАПИШИТЕ, ПОЖАЛУЙСТА, КУДА ЛУЧШЕ СКЛАДЫВАТЬ ВСЮ ЭТУ ЛОГИКУ
-
-        if right_location.first() is not None:
-            location_id_id = right_location.first().id
-        else:
-            lat, lng = GeoFinder(location).get_lat_lng()
-            created_location = Location.objects.create(name=location, lat=lat, lng=lng)
-            location_id_id = created_location.id
-
-        ad = Author.objects.create(
-                first_name=ad_data["first_name"],
-                last_name=ad_data["last_name"],
-                username=ad_data["username"],
-                password=ad_data["password"],
-                role=ad_data["role"],
-                age=ad_data["age"],
-                location_id_id=location_id_id)
-
-        try:
-            ad.full_clean()
-        except ValidationError as e:
-            return JsonResponse(e.message_dict, status=422)
-
-        return JsonResponse({
-            "id": ad.id,
-            "name": ad.username,
-        })
+    # def post(self, request, *args, **kwargs):
+    #     print(self.get_serializer_context())
+    #     super().post(self, request, *args, **kwargs)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -105,7 +118,7 @@ class AuthorDeleteView(DeleteView):
 @method_decorator(csrf_exempt, name='dispatch')
 class AuthorUpdateView(UpdateView):
     model = Author
-    fields = ["first_name", "last_name", "username", "password", "role", "age", "location_id"]
+    fields = ["first_name", "last_name", "username", "password", "role", "age", "location"]
 
     def patch(self, request, *args, **kwargs):
         super().post(request, *args, **kwargs)
@@ -117,13 +130,13 @@ class AuthorUpdateView(UpdateView):
             right_location = Location.objects.all().filter(name=location)
             # TODO НАПИШИТЕ, ПОЖАЛУЙСТА, КУДА ЛУЧШЕ СКЛАДЫВАТЬ ВСЮ ЭТУ ЛОГИКУ
             if right_location.first():
-                location_id_id = right_location.first().id
+                location_id = right_location.first().id
             else:
                 lat, lng = GeoFinder(location).get_lat_lng()
                 created_location = Location.objects.create(name=location, lat=lat, lng=lng)
-                location_id_id = created_location.id
+                location_id = created_location.id
 
-            self.object.location_id_id = location_id_id
+            self.object.location_id = location_id
 
         self.object.first_name = ad_data.get("first_name", self.object.first_name)
         self.object.last_name = ad_data.get("last_name", self.object.last_name)
@@ -146,7 +159,7 @@ class AuthorUpdateView(UpdateView):
             "password": self.object.password,
             "role": self.object.role,
             "age": self.object.age,
-            "location_id": self.object.location_id_id
+            "location_id": self.object.location_id
         })
 
 
@@ -169,6 +182,6 @@ class AuthorDetailView(DetailView):
                 "password": ad.password,
                 "role": ad.role,
                 "age": ad.age,
-                "location_id": ad.location_id_id,
+                "location_id": ad.location_id,
                 "total_ads": ad.total_ads
             })

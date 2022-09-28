@@ -31,7 +31,7 @@ class Author(models.Model):
     password = models.CharField(max_length=100, default='')
     role = models.CharField(max_length=10, choices=ROLES)
     age = models.PositiveSmallIntegerField(null=True, blank=True)
-    location_id = models.ForeignKey(Location, on_delete=models.CASCADE)
+    location = models.ForeignKey(Location, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.username

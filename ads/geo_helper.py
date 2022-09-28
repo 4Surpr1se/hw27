@@ -18,6 +18,3 @@ class GeoFinder(Translator, Nominatim):
         translation = self.translate(self.location)
         location = self.geocode(translation)
         return (location.latitude, location.longitude) if location else (0.0, 0.0)
-
-
-print(GeoFinder("фывфыф, фыввывв").get_lat_lng())

@@ -14,12 +14,28 @@ from ads.models.ad_and_cat import Ad
 from hw27.settings import TOTAL_ON_PAGE
 
 
+# TODO ПЕРЕДЕЛАТЬ CATEGORY_ID ID ID ID ID ID ID и AUTHOR_ID ID ID ID ID ID ID
 @method_decorator(csrf_exempt, name='dispatch')
 class AdView(View):
-
     def get(self, request):
         response = []
         ads = Ad.objects.all().order_by('-price')
+
+        if cat_id := request.GET.get('cat'):
+            ads = ads.filter(category__id__exact=cat_id)
+
+        if name_field := request.GET.get('text'):
+            ads = ads.filter(name__icontains=name_field)
+
+        if location_field := request.GET.get('location'):
+            ads = ads.filter(author__location__name__icontains=location_field)
+
+        if price_from := request.GET.get('price_from'):
+            ads = ads.filter(price__gte=price_from)
+
+        if price_to := request.GET.get('price_to'):
+            ads = ads.filter(price__lte=price_to)
+
         page = request.GET.get('page')
         paginator = Paginator(ads, TOTAL_ON_PAGE)
         page_obj = paginator.get_page(page)
@@ -27,12 +43,12 @@ class AdView(View):
             response.append({
                 "id": ad.id,
                 "name": ad.name,
-                "author_id": ad.author_id_id,
+                "author_id": ad.author_id,
                 "price": ad.price,
                 "description": ad.description,
                 "is_published": ad.is_published,
                 "image": ad.image.url if ad.image else None,
-                "category_id": ad.category_id_id
+                "category_id": ad.category_id
             })
 
         return JsonResponse({'items': response,
@@ -47,7 +63,7 @@ class AdCreateView(CreateView):
 
     model = Ad
 
-    fields = ["name", "author_id", "price", "description", "is_published", "image", "category_id"]
+    fields = ["name", "author", "price", "description", "is_published", "image", "category"]
 
     def post(self, request, *args, **kwargs):
 
@@ -55,11 +71,11 @@ class AdCreateView(CreateView):
 
         ad = Ad.objects.create(
                 name=ad_data["name"],
-                author_id_id=ad_data["author_id"],
+                author_id=ad_data["author"],
                 price=ad_data["price"],
                 description=ad_data["description"],
                 is_published=ad_data["is_published"],
-                category_id_id=ad_data["category_id"])
+                category_id=ad_data["category"])
 
         try:
             ad.full_clean()
@@ -86,18 +102,18 @@ class AdDeleteView(DeleteView):
 @method_decorator(csrf_exempt, name='dispatch')
 class AdUpdateView(UpdateView):
     model = Ad
-    fields = ["name", "author_id", "price", "description", "is_published", "image", "category_id"]
+    fields = ["name", "author", "price", "description", "is_published", "image", "category"]
 
     def patch(self, request, *args, **kwargs):
         super().post(request, *args, **kwargs)
 
         ad_data = json.loads(request.body)
         self.object.name = ad_data.get("name", self.object.name)
-        self.object.author_id_id = ad_data.get("author_id", self.object.author_id)
+        self.object.author_id = ad_data.get("author_id", self.object.author_id)
         self.object.price = ad_data.get("price", self.object.price)
         self.object.description = ad_data.get("description", self.object.description)
         self.object.is_published = ad_data.get("is_published", self.object.is_published)
-        self.object.category_id_id = ad_data.get("category_id", self.object.category_id_id)
+        self.object.category_id = ad_data.get("category", self.object.category_id)
 
         try:
             self.object.full_clean()
@@ -108,12 +124,12 @@ class AdUpdateView(UpdateView):
         return JsonResponse({
             "id": self.object.id,
             "name": self.object.name,
-            "author_id": self.object.author_id_id,
+            "author": self.object.author_id,
             "price": self.object.price,
             "description": self.object.description,
             "is_published": self.object.is_published,
             "image": self.object.image.url if self.object.image else None,
-            "category_id": self.object.category_id_id
+            "category": self.object.category_id
         })
 
 
@@ -131,12 +147,12 @@ class AdDetailView(DetailView):
         return JsonResponse({
             "id": ad.id,
             "name": ad.name,
-            "author_id": ad.author_id_id,
+            "author": ad.author_id,
             "price": ad.price,
             "description": ad.description,
             "is_published": ad.is_published,
             "image": ad.image.url if ad.image else None,
-            "category_id": ad.category_id_id
+            "category": ad.category_id
         })
 
 
