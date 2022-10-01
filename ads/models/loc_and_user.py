@@ -1,3 +1,4 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
@@ -15,15 +16,21 @@ class Location(models.Model):
         return self.name
 
 
-class Author(models.Model):
+class User(AbstractUser):
     class Meta:
         verbose_name = 'Автор'
         verbose_name_plural = 'Авторы'
         ordering = ['username']
 
-    ROLES = [('member', 'member'),
-             ('moderator', 'moderator'),
-             ('admin', 'admin')]
+    member = 'member'
+    moderator = 'moderator'
+    admin = 'admin'
+
+    ROLES = [(member, member),
+             (moderator, moderator),
+             (admin, admin)]
+
+    USERNAME_FIELD = 'id'
 
     first_name = models.CharField(max_length=100, default='')
     last_name = models.CharField(max_length=100, default='')

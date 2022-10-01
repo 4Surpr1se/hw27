@@ -4,6 +4,7 @@ from .author_views import AuthorView, AuthorDetailView, AuthorAPICreate, AuthorD
 from .index_view import IndexView
 from .cat_views import CatView, CatDetailView, CatCreateView, CatDeleteView, CatUpdateView
 from .location_views import LocationViewSet
+from .selection_views import SelectionViewSet
 
 #TODO вьюшки author изменить
 

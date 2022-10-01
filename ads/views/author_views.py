@@ -14,19 +14,23 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, CreateView, DeleteView, UpdateView
 from django.db import connection
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 
 from ads import serializers
 from ads.geo_helper import GeoFinder
-from ads.models.loc_and_user import Author, Location
+from ads.models.loc_and_user import User, Location
 from hw27.settings import TOTAL_ON_PAGE
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class AuthorView(View):
+class AuthorView(APIView): #TODO переписать на реальное APIView до этого наследовался от View
+
+    # permission_classes = (IsAuthenticated,)
 
     def get(self, request):
         response = []
-        ads = Author.objects.all().annotate(total_ads=Count('ad', filter=Q(ad__is_published=True)))
+        ads = User.objects.all().annotate(total_ads=Count('ad', filter=Q(ad__is_published=True)))
 
         page = request.GET.get('page')
         paginator = Paginator(ads, TOTAL_ON_PAGE)
@@ -42,7 +46,7 @@ class AuthorView(View):
                 "role": ad.role,
                 "age": ad.age,
                 "location": ad.location.name,
-                "total_ads": ad.total_ads
+                "total_ads": ad.total_ads,
             })
 
         return JsonResponse({'items': response,
@@ -96,7 +100,8 @@ class AuthorView(View):
 
 
 class AuthorAPICreate(generics.CreateAPIView):
-    queryset = Author.objects.all()
+    permission_classes = (IsAuthenticated,)
+    queryset = User.objects.all()
     serializer_class = serializers.AlbumSerializer  # TODO вернуть geohelper
 
     # def post(self, request, *args, **kwargs):
@@ -107,7 +112,7 @@ class AuthorAPICreate(generics.CreateAPIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class AuthorDeleteView(DeleteView):
 
-    model = Author
+    model = User
     success_url = '/'
 
     def delete(self, request, *args, **kwargs):
@@ -117,7 +122,7 @@ class AuthorDeleteView(DeleteView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AuthorUpdateView(UpdateView):
-    model = Author
+    model = User
     fields = ["first_name", "last_name", "username", "password", "role", "age", "location"]
 
     def patch(self, request, *args, **kwargs):
@@ -165,7 +170,7 @@ class AuthorUpdateView(UpdateView):
 
 class AuthorDetailView(DetailView):
 
-    model = Author
+    model = User
 
     def get(self, request, *args, **kwargs):
         try:
@@ -173,7 +178,7 @@ class AuthorDetailView(DetailView):
         except Exception as e:
             return JsonResponse({'error': 'Not found',
                                  'error_name': str(e)}, status=404)
-
+  # TODO ДОДЕЛАТЬ TOTAL_ADS
         return JsonResponse({
                 "id": ad.id,
                 "first_name": ad.first_name,
@@ -183,5 +188,4 @@ class AuthorDetailView(DetailView):
                 "role": ad.role,
                 "age": ad.age,
                 "location_id": ad.location_id,
-                "total_ads": ad.total_ads
             })
